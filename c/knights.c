@@ -77,7 +77,7 @@ void hunt(position start, int depth, const char board[BOARDSIZE*BOARDSIZE])
         solutions++;
         printf(".");
         fflush(stdout);
-        if (solutions % 1000 == 0) printf("Found %d solutions so far...\n", solutions);
+        if (solutions % 10000 == 0) printf("Found %d solutions so far...\n", solutions);
         return;
     }
     
@@ -95,7 +95,7 @@ void hunt(position start, int depth, const char board[BOARDSIZE*BOARDSIZE])
 void* thread_start_function(void* arg)
 {
     int thread_num = (int)arg;
-    printf("[Thread %d booting]\n", thread_num);
+    printf("[%d]", thread_num);
     
     int skip = 0;
     
@@ -113,7 +113,7 @@ void* thread_start_function(void* arg)
             if (skip >= THREADS) skip = 0;
         }
     
-    printf("[Thread %d exit]\n", thread_num);
+    printf("<%d>", thread_num);
     return 0;
 }
 
@@ -127,6 +127,7 @@ int main(int argc, const char * argv[])
     memset(referenceboard, 0, sizeof(referenceboard));
     
 #if THREADS > 1
+    printf("[Multithreaded (%d)]\n", THREADS);
     pthread_t threads[THREADS];
     int x;
     for (x = 0; x < THREADS; ++x)
