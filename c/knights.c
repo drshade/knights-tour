@@ -11,14 +11,14 @@
 
 char referenceboard[BOARDSIZE * BOARDSIZE];
 
-int solutions = 0;
+int solutions = 0, attempts = 0;
 
 typedef struct { int x; int y; int valid; } position;
 position new_position(int x, int y) { position p; p.x = x; p.y = y; p.valid = 1; return p; }
 
+/* Code below unashamedly stolen from 'somewhere' to calculate difference (delta) between 2 timeval's */
 int timeval_subtract (result, x, y) struct timeval *result, *x, *y;
 {
-    /* Perform the carry for the later subtraction by updating y. */
     if (x->tv_usec < y->tv_usec) {
         int nsec = (y->tv_usec - x->tv_usec) / 1000000 + 1;
         y->tv_usec -= 1000000 * nsec;
@@ -29,42 +29,15 @@ int timeval_subtract (result, x, y) struct timeval *result, *x, *y;
         y->tv_usec += 1000000 * nsec;
         y->tv_sec -= nsec;
     }
-    
-    /* Compute the time remaining to wait.
-     tv_usec is certainly positive. */
     result->tv_sec = x->tv_sec - y->tv_sec;
     result->tv_usec = x->tv_usec - y->tv_usec;
-    
-    /* Return 1 if result is negative. */
     return x->tv_sec < y->tv_sec;
-}
-
-
-position* available_positions(position start, char board[BOARDSIZE * BOARDSIZE])
-{
-    position possibles[8] = { 
-        new_position(start.x - 1, start.y - 2), new_position(start.x - 2, start.y - 1),
-        new_position(start.x + 1, start.y - 2), new_position(start.x + 2, start.y - 1),
-        new_position(start.x + 1, start.y + 2), new_position(start.x + 2, start.y + 1),
-        new_position(start.x - 1, start.y + 2), new_position(start.x - 2, start.y + 1),
-    };
-
-    int x;
-    for (x = 0; x < 8; ++x)
-    {
-        position* p = &possibles[x];
-        if (!(p->x >= 0 && p->y >= 0 && p->x < BOARDSIZE && p->y < BOARDSIZE && board[(p->x * BOARDSIZE) + p->y] == 0))
-            p->valid = 0;
-    }
-    
-    position* possibles_for_return = malloc(sizeof(possibles));
-    memcpy(possibles_for_return, possibles, sizeof(possibles));
-    
-    return possibles_for_return;
 }
 
 void hunt(position start, int depth, const char board[BOARDSIZE*BOARDSIZE])
 {
+    attempts++;
+    
     char my_board[BOARDSIZE * BOARDSIZE];
     memcpy(my_board, board, sizeof(my_board));
     
@@ -81,15 +54,24 @@ void hunt(position start, int depth, const char board[BOARDSIZE*BOARDSIZE])
         return;
     }
     
-    position* positions = available_positions(start, my_board);
+    // Determine possible moves
+    //
+    position possibles[8] = { 
+        new_position(start.x - 1, start.y - 2), new_position(start.x - 2, start.y - 1),
+        new_position(start.x + 1, start.y - 2), new_position(start.x + 2, start.y - 1),
+        new_position(start.x + 1, start.y + 2), new_position(start.x + 2, start.y + 1),
+        new_position(start.x - 1, start.y + 2), new_position(start.x - 2, start.y + 1),
+    };
+    
     int x;
     for (x = 0; x < 8; ++x)
     {
-        position p = positions[x];
-        if (p.valid)
-            hunt(p, depth + 1, my_board);
+        // If position is within the bounds of the board, and not already taken, then hunt some more!
+        //
+        position* p = &possibles[x];
+        if (p->x >= 0 && p->y >= 0 && p->x < BOARDSIZE && p->y < BOARDSIZE && board[(p->x * BOARDSIZE) + p->y] == 0)
+            hunt(*p, depth + 1, my_board);
     }
-    free(positions);
 }
 
 void* thread_start_function(void* arg)
@@ -151,8 +133,7 @@ int main(int argc, const char * argv[])
     struct timeval delta;
     timeval_subtract(&delta, &end, &start);
     
-    // insert code here...
-    printf("Found %d solutions in %ld.%ds\n", solutions, delta.tv_sec, delta.tv_usec);
+    printf("Found %d solutions in %ld.%ds (%d moves)\n", solutions, delta.tv_sec, delta.tv_usec, attempts);
     return 0;
 }
 
