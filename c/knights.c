@@ -4,8 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 #define BOARDSIZE 5
+#define THREADS 4
 
 char referenceboard[BOARDSIZE * BOARDSIZE];
 
@@ -90,6 +92,31 @@ void hunt(position start, int depth, const char board[BOARDSIZE*BOARDSIZE])
     free(positions);
 }
 
+void* thread_start_function(void* arg)
+{
+    int thread_num = (int)arg;
+    printf("[Thread %d booting]\n", thread_num);
+    
+    int skip = 0;
+    
+    int x, y;
+    for (x = 0; x < BOARDSIZE; ++x)
+        for (y = 0; y < BOARDSIZE; ++y)
+        {
+            if (skip == thread_num)
+            {
+                printf("(%d,%d)", x, y);
+                hunt (new_position(x, y), 0, referenceboard);
+            }
+            
+            skip++;
+            if (skip >= THREADS) skip = 0;
+        }
+    
+    printf("[Thread %d exit]\n", thread_num);
+    return 0;
+}
+
 int main(int argc, const char * argv[])
 {
     struct timeval start;
@@ -99,12 +126,23 @@ int main(int argc, const char * argv[])
     // 
     memset(referenceboard, 0, sizeof(referenceboard));
     
-    int x,y;
+#if THREADS > 1
+    pthread_t threads[THREADS];
+    int x;
+    for (x = 0; x < THREADS; ++x)
+        pthread_create(&threads[x], NULL, thread_start_function, x);
+    for (x = 0; x < THREADS; ++x)
+        pthread_join(threads[x], NULL);
+#else
+    printf("[Single threaded]\n");
+    int x, y;
     for (x = 0; x < BOARDSIZE; ++x)
         for (y = 0; y < BOARDSIZE; ++y)
         {
+            printf("(%d,%d)", x, y);
             hunt (new_position(x, y), 0, referenceboard);
         }
+#endif
     
     struct timeval end;
     gettimeofday(&end, 0);
